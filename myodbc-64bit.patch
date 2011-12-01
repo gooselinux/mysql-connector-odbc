@@ -1,0 +1,159 @@
+Fix some 64-bitness issues arising from unixODBC 2.2.14 changes.
+
+
+diff -Naur mysql-connector-odbc-5.1.5r1144.orig/driver/driver.h mysql-connector-odbc-5.1.5r1144/driver/driver.h
+--- mysql-connector-odbc-5.1.5r1144.orig/driver/driver.h	2008-07-30 09:55:04.000000000 -0400
++++ mysql-connector-odbc-5.1.5r1144/driver/driver.h	2009-02-20 14:12:51.000000000 -0500
+@@ -232,7 +232,7 @@
+   SQLULEN      *bind_offset_ptr;
+   SQLINTEGER    bind_type;
+   SQLLEN        count;
+-  SQLUINTEGER  *rows_processed_ptr;
++  SQLULEN      *rows_processed_ptr;
+ 
+   /* internal fields */
+   desc_desc_type  desc_type;
+diff -Naur mysql-connector-odbc-5.1.5r1144.orig/driver/utility.c mysql-connector-odbc-5.1.5r1144/driver/utility.c
+--- mysql-connector-odbc-5.1.5r1144.orig/driver/utility.c	2008-07-08 21:14:29.000000000 -0400
++++ mysql-connector-odbc-5.1.5r1144/driver/utility.c	2009-02-20 14:15:48.000000000 -0500
+@@ -1139,7 +1139,7 @@
+ */
+ void fill_column_size_buff(char *buff, STMT *stmt, MYSQL_FIELD *field)
+ {
+-	sprintf(buff, (sizeof(SQLULEN) == 4 ? "%ld" : "%llu"),
++	sprintf(buff, "%lu",
+                 get_column_size(stmt, field));
+ }
+ 
+diff -Naur mysql-connector-odbc-5.1.5r1144.orig/test/my_catalog.c mysql-connector-odbc-5.1.5r1144/test/my_catalog.c
+--- mysql-connector-odbc-5.1.5r1144.orig/test/my_catalog.c	2008-07-14 18:05:50.000000000 -0400
++++ mysql-connector-odbc-5.1.5r1144/test/my_catalog.c	2009-02-20 14:17:42.000000000 -0500
+@@ -574,7 +574,7 @@
+      fprintf(stdout, "#  Column Name   : %s\n", szColName);
+      fprintf(stdout, "#  NameLengh     : %d\n", pcbColName);
+      fprintf(stdout, "#  DataType      : %d\n", pfSqlType);
+-     fprintf(stdout, "#  ColumnSize    : %d\n", pcbColDef);
++     fprintf(stdout, "#  ColumnSize    : %ld\n", pcbColDef);
+      fprintf(stdout, "#  DecimalDigits : %d\n", pibScale);
+      fprintf(stdout, "#  Nullable      : %d\n", pfNullable);
+ 
+@@ -607,7 +607,7 @@
+ 
+     rc = SQLGetConnectAttr(hdbc, SQL_ATTR_CURRENT_CATALOG, db, sizeof(db), &len);
+     mycon(hdbc,rc);
+-    fprintf(stdout,"current_catalog: %s (%ld)\n", db, len);
++    fprintf(stdout,"current_catalog: %s (%d)\n", db, len);
+     is_num(len, 4);
+     is_str(db, "test", 5);
+ 
+@@ -628,7 +628,7 @@
+ 
+     rc = SQLGetConnectAttr(hdbc, SQL_ATTR_CURRENT_CATALOG, db, 255, &len);
+     mycon(hdbc,rc);
+-    fprintf(stdout,"current_catalog: %s (%ld)\n", db, len);
++    fprintf(stdout,"current_catalog: %s (%d)\n", db, len);
+     is_num(len, 17);
+     is_str(db, cur_db, 18);
+ 
+diff -Naur mysql-connector-odbc-5.1.5r1144.orig/test/my_cursor.c mysql-connector-odbc-5.1.5r1144/test/my_cursor.c
+--- mysql-connector-odbc-5.1.5r1144.orig/test/my_cursor.c	2008-04-14 21:02:23.000000000 -0400
++++ mysql-connector-odbc-5.1.5r1144/test/my_cursor.c	2009-02-20 14:18:28.000000000 -0500
+@@ -709,7 +709,7 @@
+ 
+     rc = SQLRowCount(hstmt1,&row_count);
+     mystmt(hstmt1,rc);
+-    fprintf(stdout, "rows affected: %d\n", row_count);
++    fprintf(stdout, "rows affected: %ld\n", row_count);
+     myassert(row_count == 1);
+ 
+     rc = SQLExtendedFetch(hstmt,SQL_FETCH_NEXT,1,NULL,&rgfRowStatus);
+@@ -730,7 +730,7 @@
+ 
+     rc = SQLRowCount(hstmt1,&row_count);
+     mystmt(hstmt1,rc);
+-    fprintf(stdout, "rows affected: %d\n", row_count);
++    fprintf(stdout, "rows affected: %ld\n", row_count);
+     myassert(row_count == 1);
+ 
+     SQLFreeStmt(hstmt,SQL_UNBIND);
+diff -Naur mysql-connector-odbc-5.1.5r1144.orig/test/my_datetime.c mysql-connector-odbc-5.1.5r1144/test/my_datetime.c
+--- mysql-connector-odbc-5.1.5r1144.orig/test/my_datetime.c	2008-06-16 23:41:43.000000000 -0400
++++ mysql-connector-odbc-5.1.5r1144/test/my_datetime.c	2009-02-20 14:19:14.000000000 -0500
+@@ -728,7 +728,7 @@
+ DECLARE_TEST(t_datecolumns)
+ {
+   SQLCHAR col[10];
+-  SQLINTEGER type;
++  SQLLEN type;
+ 
+   ok_sql(hstmt, "DROP TABLE IF EXISTS t_datecolumns");
+   ok_sql(hstmt,
+diff -Naur mysql-connector-odbc-5.1.5r1144.orig/test/my_result.c mysql-connector-odbc-5.1.5r1144/test/my_result.c
+--- mysql-connector-odbc-5.1.5r1144.orig/test/my_result.c	2008-07-08 21:14:29.000000000 -0400
++++ mysql-connector-odbc-5.1.5r1144/test/my_result.c	2009-02-20 14:20:21.000000000 -0500
+@@ -1260,7 +1260,7 @@
+ DECLARE_TEST(t_colattributes)
+ {
+   SQLLEN count;
+-  SQLINTEGER isauto;
++  SQLLEN isauto;
+ 
+   ok_sql(hstmt, "DROP TABLE IF EXISTS t_colattr");
+ 
+@@ -2374,7 +2374,7 @@
+   SQLLEN boundLen= 0;
+   SQLULEN count;
+   UWORD status;
+-  SQLUINTEGER colSize;
++  SQLULEN colSize;
+   SQLRETURN rc;
+ 
+   ok_sql(hstmt, "drop table if exists bug24131");
+diff -Naur mysql-connector-odbc-5.1.5r1144.orig/test/my_types.c mysql-connector-odbc-5.1.5r1144/test/my_types.c
+--- mysql-connector-odbc-5.1.5r1144.orig/test/my_types.c	2008-07-08 21:14:29.000000000 -0400
++++ mysql-connector-odbc-5.1.5r1144/test/my_types.c	2009-02-20 14:22:51.000000000 -0500
+@@ -501,8 +501,8 @@
+ */
+ DECLARE_TEST(decimal_scale)
+ {
+-  SQLINTEGER fixed= SQL_FALSE;
+-  SQLINTEGER prec, scale;
++  SQLLEN fixed= SQL_FALSE;
++  SQLLEN prec, scale;
+ 
+   ok_sql(hstmt, "DROP TABLE IF EXISTS t_decscale");
+   ok_sql(hstmt, "CREATE TABLE t_decscale (a DECIMAL(5,3))");
+@@ -557,7 +557,7 @@
+ */
+ DECLARE_TEST(float_scale)
+ {
+-  SQLINTEGER scale;
++  SQLLEN scale;
+ 
+   ok_sql(hstmt, "DROP TABLE IF EXISTS t_floatscale");
+   ok_sql(hstmt, "CREATE TABLE t_floatscale(a FLOAT, b DOUBLE, c DECIMAL(3,2))");
+@@ -593,6 +593,7 @@
+ {
+   SQLCHAR col[10];
+   SQLINTEGER type;
++  SQLLEN ltype;
+   SQLLEN len;
+ 
+   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bit");
+@@ -625,12 +626,12 @@
+   ok_sql(hstmt, "SELECT * FROM t_bit");
+ 
+   ok_stmt(hstmt, SQLColAttribute(hstmt, 1, SQL_DESC_TYPE, NULL, 0, NULL,
+-                                 &type));
+-  is_num(type, SQL_BIT);
++                                 &ltype));
++  is_num(ltype, SQL_BIT);
+ 
+   ok_stmt(hstmt, SQLColAttribute(hstmt, 2, SQL_DESC_TYPE, NULL, 0, NULL,
+-                                 &type));
+-  is_num(type, SQL_BINARY);
++                                 &ltype));
++  is_num(ltype, SQL_BINARY);
+ 
+   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
+ 

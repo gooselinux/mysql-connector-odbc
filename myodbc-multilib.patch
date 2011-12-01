@@ -1,0 +1,15 @@
+Get rid of useless and pernicious -L/usr/lib
+
+
+diff -Naur mysql-connector-odbc-5.1.5r1144.orig/configure.in mysql-connector-odbc-5.1.5r1144/configure.in
+--- mysql-connector-odbc-5.1.5r1144.orig/configure.in	2008-04-16 14:01:58.000000000 -0400
++++ mysql-connector-odbc-5.1.5r1144/configure.in	2009-01-14 15:37:18.000000000 -0500
+@@ -84,7 +84,7 @@
+   else
+    LTDL_LIB="-L$withval/lib -lltdl"
+   fi
+-], [LTDL_LIB="-L/usr/lib -lltdl"])
++], [LTDL_LIB="-lltdl"])
+ AC_SUBST(LTDL_LIB)
+ 
+ dnl AC_CHECK_LIB(ltdl, lt_dlinit, [],

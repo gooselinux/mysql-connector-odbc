@@ -1,0 +1,16 @@
+myodbc_end really should only be invoked during Windows DLL unload, since it's
+not connection-specific and not thread-safe either.  This bit of brain fade
+accounts for our bug #185343 and several bugs filed at mysql.com.
+
+
+diff -Naur mysql-connector-odbc-5.1.5r1144.orig/driver/handle.c mysql-connector-odbc-5.1.5r1144/driver/handle.c
+--- mysql-connector-odbc-5.1.5r1144.orig/driver/handle.c	2008-02-23 12:51:58.000000000 -0500
++++ mysql-connector-odbc-5.1.5r1144/driver/handle.c	2009-01-14 15:55:10.000000000 -0500
+@@ -111,7 +111,6 @@
+     GlobalFree(GlobalHandle((HGLOBAL) henv));
+ #else
+     if (henv) my_free((char*) henv,MYF(0));
+-    myodbc_end();
+ #endif /* _UNIX_ */
+     return(SQL_SUCCESS);
+ }

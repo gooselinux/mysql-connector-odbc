@@ -1,0 +1,15 @@
+Avoid core dump if isql second or third argument is omitted.
+
+
+diff -Naur mysql-connector-odbc-5.1.5r1144.orig/util/stringutil.c mysql-connector-odbc-5.1.5r1144/util/stringutil.c
+--- mysql-connector-odbc-5.1.5r1144.orig/util/stringutil.c	2008-04-14 21:03:35.000000000 -0400
++++ mysql-connector-odbc-5.1.5r1144/util/stringutil.c	2009-02-16 14:28:59.000000000 -0500
+@@ -52,7 +52,7 @@
+   SQLINTEGER i, out_bytes;
+   my_bool free_str= FALSE;
+ 
+-  if (*len == SQL_NTS)
++  if (str && *len == SQL_NTS)
+     *len= strlen((char *)str);
+ 
+   if (!str || *len == 0)
